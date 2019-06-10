@@ -2,7 +2,7 @@ state ("ed8") {
 
     byte fadeToBlack : 0x87F1E0;
     byte textOnScreen :  0x93212D;
-    byte orbmentHeal : 0x008775D8, 0xE2C;
+    byte orbmentHeal : 0x8775D8, 0xE2C;
     byte checkingQuests : 0x9A83C8;
     byte tutorialCard1 : 0x9329B6;
     byte tutorialCard2 : 0x932AF6;
@@ -17,15 +17,15 @@ state ("ed8") {
     int choicesDisplayed : 0x93212C, 0x4, 0x144;
     
     byte cutsceneFlag : 0x87F1F0; 
-    ushort cutsceneID : 0x008775D8, 0xE28;
+    ushort cutsceneID : 0x8775D8, 0xE28;
     ushort bgmID: 0x93237A;    	
     
-    ushort battleID : 0x008775D8, 0x57D0;  
+    ushort battleID : 0x8775D8, 0x57D0;  
     byte currentPart : 0x87EB98;  
     
-    float xAxisPos : 0x0087DAA0, 0xAC, 0x8, 0xC8;
-    float zAxisPos : 0x0087DAA0, 0xAC, 0x8, 0xD0;
-    byte currentPartyLeader : 0x0087DAA0, 0xAC;
+    float xAxisPos : 0x87DAA0, 0xAC, 0x8, 0xC8;
+    float zAxisPos : 0x87DAA0, 0xAC, 0x8, 0xD0;
+    byte currentPartyLeader : 0x87DAA0, 0xAC;
     ushort roomID : 0x87E360;
 
 }
@@ -200,16 +200,15 @@ update {
     //The Navigation Menu pointer is really powerful, pointing to most things that make textOnScreen not clear properly
     //However, it also points to some undesirable things, meaning we have to figure out which is which
     
-    if ((((byte)current.fastTravelMenu & (1<<4)) != 0) && current.choicesDisplayed > 0 && current.choicesDisplayed < 20 && current.navigationMenu != 0 && timer.CurrentPhase != TimerPhase.NotRunning){
+    if ((current.fastTravelMenu & 1<<4) != 0 && current.choicesDisplayed > 0 && current.choicesDisplayed < 20 && current.navigationMenu != 0 && timer.CurrentPhase != TimerPhase.NotRunning){
         vars.fastTravelValue = current.navigationMenu;
         vars.setFastTravelValue = true;
-        print("Fast travel value set at:" + vars.fastTravelValue);
-     }
+        }
         
     if (vars.setFastTravelValue)
         vars.inFastTravel = vars.fastTravelValue == current.navigationMenu;
  
-    if ((((byte)current.actEnd & (1<<0)) != 0) && !vars.setLingeringActEnd && current.navigationMenu != 0 && timer.CurrentPhase != TimerPhase.NotRunning){
+    if ((current.actEnd & 1) != 0 && !vars.setLingeringActEnd && current.navigationMenu != 0 && timer.CurrentPhase != TimerPhase.NotRunning){
         vars.lingeringActEndValue = current.navigationMenu;
         vars.setLingeringActEnd = true;
      }
@@ -227,6 +226,7 @@ update {
     //Cutscene ID is pretty bad in this game compared to cs2, meaning it's constantly being reused
     //As such, since I promised to make a split for entering the Realm, there's no other choice but to count the amount of times the ID pops up
     //We'll also count for running the timer on some party selection screens because those are just bad
+   
     if(current.currentPart == 8 && current.cutsceneID == 21305 && old.cutsceneID ==0)
         vars.realmCutsceneClearTimes++;
     
@@ -407,73 +407,60 @@ split {
 }
 
 
-isLoading { //Somebody refactor this for me please thanks
+isLoading {
 
-        if (settings["remove_BGM_change"] && current.cutsceneFlag != 0 && current.cutsceneID != 25964 && ((((byte)current.actEnd) & (1 << 0)) == 0 ) && current.resultCards == 0 && current.bgmID == 65535 && current.textOnScreen == 0 && current.roomID != 5392) {
-           return true;
+        if (settings["remove_BGM_change"] && current.cutsceneFlag != 0 && current.bgmID == 65535 
+            && current.cutsceneID != 25964 && (current.actEnd & 1) == 0 && current.resultCards == 0 && current.textOnScreen == 0 && current.roomID != 5392) {
+            return true;
         }
-        
-        else {
-            if (current.fadeToBlack == 03 || (current.fadeToBlack == 02 && current.cutsceneFlag == 0) ){ 
-                
-                //Party selection screens. Yes, it's as bad as it looks, no, I can't think of a better way because I can't find a good way to actually track the screens                 
-                if ( (current.cutsceneID == 25964 && !vars.doneWithSchoolhouseAssembly ) || 
-                     (current.currentPart == 5 && current.cutsceneID == 21300 && !vars.doneWithMilliumAssembly && current.currentPartyLeader == 0) || 
-                     (current.currentPart == 8 && current.cutsceneID == 21305 && current.cutsceneFlag == 0 && vars.realmCutsceneClearTimes == 4 && current.currentPartyLeader == 0) ||
-                     (current.currentPart == 8 && current.cutsceneID == 21305 && current.cutsceneFlag == 0 && current.currentPartyLeader == 0 && current.roomID == 3392 && current.bgmID == 308) ||
-                     (current.currentPart == 6 && current.cutsceneID == 21301 && current.currentPartyLeader == 0) ||
-                     (current.currentPart == 3 && current.cutsceneID == 21297 && current.currentPartyLeader == 0) ||
-                     (current.currentPart == 4 && current.cutsceneID == 21297 && current.currentPartyLeader == 0) ){ //Party selection screens. Yes, it's as bad as it looks, no, I can't think of a better way because I can't find a good way to actually track the screens
-                   
-                        return false;
-                   }
-                
-                
-                if (current.orbmentHeal != 116 && !vars.inBattle && ((((byte)current.actEnd) & (1 << 0)) == 0 ) && current.checkingQuests == 0 ) {
-                    
-                    
-                  //Text doesn't clear properly in this game unlike in cs2, so we have to make edge checks
-                  if(vars.setFastTravelValue || vars.setLingeringActEnd){  
 
-		            if(vars.setFastTravelValue && !vars.setLingeringActEnd){
-                        if(current.textOnScreen != 0 && !vars.inFastTravel && current.battleFlag != 48)
-                            return false;
-                    }
-                    
-                    else if(!vars.setFastTravelValue && vars.setLingeringActEnd){
- 			            if(current.textOnScreen != 0 && !vars.actEndIsLingering && current.battleFlag != 48)
-                            return false;
-                    }
-	                else if (vars.setFastTravelValue && vars.setLingeringActEnd){
-			            if(current.textOnScreen != 0 && !vars.actEndIsLingering  && !vars.inFastTravel && current.battleFlag != 48)
-                            return false;
-                   }
-		          }
+        if (current.fadeToBlack != 3 && (current.fadeToBlack != 2 || current.cutsceneFlag != 0)) {
+            return false;
+        }
 
-                  else if(current.textOnScreen != 0 && current.battleFlag != 48)
-                        return false;
-                  //end of text checks
-                                         
-                                         
-                  if( current.resultCards != 0) 
-                        return false;
-                    
-                      
-                  else if (current.currentPart > 5) //The last tutorial card is the Burst attack one in Garrelia, Chapter 5
-                      return true;
-                     
-                    
-                  else if (current.tutorialCard1 != 0 || current.tutorialCard2 != 0 || current.tutorialCard3 != 0 || current.tutorialCard4 != 0)
-                      return ((((byte)current.tutorialCardSafety) & (1 << 3)) == 0);                     
-                        
-                  else
-                      return true;
-                    
-                }
-                
+        //Party selection screens. Yes, it's as bad as it looks, no, I can't think of a better way because I can't find a good way to actually track the screens
+        if (   current.cutsceneID == 25964 && !vars.doneWithSchoolhouseAssembly 
+            || current.currentPart == 5 && current.cutsceneID == 21300 && !vars.doneWithMilliumAssembly && current.currentPartyLeader == 0
+            || current.currentPart == 8 && current.cutsceneID == 21305 && current.cutsceneFlag == 0 && vars.realmCutsceneClearTimes == 4 && current.currentPartyLeader == 0
+            || current.currentPart == 8 && current.cutsceneID == 21305 && current.cutsceneFlag == 0 && current.currentPartyLeader == 0 && current.roomID == 3392 && current.bgmID == 308
+            || current.currentPart == 6 && current.cutsceneID == 21301 && current.currentPartyLeader == 0 
+            || current.currentPart == 3 && current.cutsceneID == 21297 && current.currentPartyLeader == 0 
+            || current.currentPart == 4 && current.cutsceneID == 21297 && current.currentPartyLeader == 0   ) {
+
+            return false;
+        }
+
+        if (current.orbmentHeal == 116 || vars.inBattle || (current.actEnd & 1) != 0 || current.checkingQuests != 0) {
+            return false;
+        }
+
+        // Text doesn't clear properly in this game unlike in cs2, so we have to make edge checks
+        if (vars.setFastTravelValue || vars.setLingeringActEnd) {
+
+            if (vars.setFastTravelValue && !vars.setLingeringActEnd) {
+                if (current.textOnScreen != 0 && !vars.inFastTravel && current.battleFlag != 48)
+                    return false;
+            } 
+            else if (!vars.setFastTravelValue) {
+                if (current.textOnScreen != 0 && !vars.actEndIsLingering && current.battleFlag != 48)
+                    return false;
+            } 
+            else {
+                if (current.textOnScreen != 0 && !vars.actEndIsLingering && !vars.inFastTravel && current.battleFlag != 48)
+                    return false;
             }
+        } else if (current.textOnScreen != 0 && current.battleFlag != 48)
+            return false;
 
-        }
-        
-    return false;
-}   
+        if (current.resultCards != 0)
+            return false;
+
+        if (current.currentPart > 5) //The last tutorial card is the Burst attack one in Garrelia, Chapter 5
+            return true;
+
+        if (current.tutorialCard1 != 0 || current.tutorialCard2 != 0 || current.tutorialCard3 != 0 || current.tutorialCard4 != 0)
+            return (current.tutorialCardSafety & 1 << 3) == 0;
+
+        return true;
+
+    }
